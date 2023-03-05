@@ -2,6 +2,7 @@ mod wcif;
 mod oauth;
 mod competition;
 mod wcif_oauth;
+mod noauth;
 
 use serde::{Deserializer, Deserialize, Serializer};
 use serde::de::Error;
