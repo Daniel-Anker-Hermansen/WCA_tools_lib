@@ -38,15 +38,15 @@ impl OAuth for ImplicitOAuth {
         &self.prefix
     }
 
-    async fn custom_route(&self, suffix: &str) -> String {
+    async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error> {
         let url = format!("{}{}", self.prefix, suffix);
         
         self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .send()
-            .await.unwrap()
+            .await?
             .text()
-            .await.unwrap()
+            .await
     }
 }

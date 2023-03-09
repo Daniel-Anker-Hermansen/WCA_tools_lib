@@ -15,22 +15,24 @@ pub trait OAuth {
     type DateOfBirth: DateOfBirth;
 
     async fn me(&self) -> String {
-        self.custom_route("me").await
+        self.custom_route("me").await.unwrap()
     }
 
     async fn wcif(&self, competition_name: &str) -> String where Self: OAuth<ManageCompetitions = ManageCompetitionTypes> {
         let suffix = format!("competitions/{}/wcif", competition_name);
-        self.custom_route(&suffix).await
+        self.custom_route(&suffix).await.unwrap()
     }
 
     fn prefix(&self) -> &str;
 
-    async fn custom_route(&self, suffix: &str) -> String;
+    async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error>;
 }
 
 #[async_trait]
 pub trait Refreshable { 
-    async fn refresh(&mut self) -> Result<(), String>;
+    fn scopes(&self) -> Vec<&str>;
+
+    async fn refresh(&mut self) -> Result<(), Error>;
 }
 
 pub trait Email { }
@@ -47,7 +49,7 @@ impl DateOfBirth for () { }
 
 /// Builder trait for building an oauth instance
 pub trait OAuthBuilder: Sized {
-    type ImplicitOAuth;
+    type ImplicitOAuth: OAuth + Sync + Send;
 
     fn with_secret(self, client_id: String, secret: String, redirect_uri: String) -> WithSecret<Self> {
         WithSecret { client_id, secret, redirect_uri, inner: self }
@@ -64,9 +66,9 @@ pub trait OAuthBuilder: Sized {
 
 #[async_trait]
 pub trait OAuthBuilderWithSecret: Sized + OAuthBuilder {
-    type ExplicitOAuth;
+    type ExplicitOAuth: OAuth + Refreshable + Sync + Send;
 
-    async fn authenticate_explicit(self, access_code: String) -> Result<Self::ExplicitOAuth, String>;
+    async fn authenticate_explicit(self, access_code: String) -> Result<Self::ExplicitOAuth, Error>;
 }
 
 
