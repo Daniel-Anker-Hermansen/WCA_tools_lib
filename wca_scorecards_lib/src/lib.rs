@@ -4,24 +4,9 @@ use scorecard_to_pdf::{Language, Scorecard, Return};
 mod pdf;
 pub mod wcif;
 mod localhost;
-mod compiled;
 
 pub use pdf::Stages;
 pub use localhost::responses::generate_pdf;
-
-static mut LOGGING: bool = false;
-
-pub fn set_logging(b: bool) {
-    unsafe {
-        LOGGING = b;
-    }
-}
-
-pub(crate) fn read_logging() -> bool {
-    unsafe {
-        LOGGING
-    }
-}
 
 #[allow(deprecated)]
 #[deprecated]
@@ -37,10 +22,6 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     let b = std::fs::read_to_string(b).unwrap();
     let c = args.next().unwrap();
     run(&a, Some(b), &c, language, Stages::new(1, u32::MAX), ScorecardOrdering::Default);
-}
-
-pub fn print_subsequent_rounds(competition_id: String, stages: Stages, sort_by_name: bool) {
-    localhost::init(competition_id, stages, ScorecardOrdering::from_bool(sort_by_name));
 }
 
 pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages, sort_by_name: bool) {

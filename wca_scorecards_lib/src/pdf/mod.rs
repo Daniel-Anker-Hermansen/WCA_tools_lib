@@ -8,6 +8,7 @@ use scorecard_to_pdf::Return;
 
 #[derive(Clone)]
 pub struct Stages {
+    #[allow(unused)]
     pub(crate) no: u32,
     pub(crate) capacity: u32,
 }
