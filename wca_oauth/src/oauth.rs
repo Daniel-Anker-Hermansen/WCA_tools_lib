@@ -259,7 +259,7 @@ impl WcifContainer {
                         .map(|a| a.id)
                         .collect();
                     for person in self.wcif.persons.iter_mut() {
-                        person.assignments.retain(|act| ids.contains(&act.activity_id));
+                        person.assignments.retain(|act| !ids.contains(&act.activity_id));
                     }
                 }
                 a.child_activities = (0..no).map(|g|{
