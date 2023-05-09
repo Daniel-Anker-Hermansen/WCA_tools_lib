@@ -255,7 +255,12 @@ impl WcifContainer {
             .find(|a|a.activity_code.contains(&format!("{event}-r{round}")))
             .map(|a|{
                 if a.child_activities.len() != 0 {
-                    return None;
+                    let ids: Vec<_> = a.child_activities.iter()
+                        .map(|a| a.id)
+                        .collect();
+                    for person in self.wcif.persons.iter_mut() {
+                        person.assignments.retain(|act| !ids.contains(&act.activity_id));
+                    }
                 }
                 a.child_activities = (0..no).map(|g|{
                     let group_time = (a.end_time - a.start_time) / no as i32;
@@ -272,10 +277,10 @@ impl WcifContainer {
                         extensions: vec![] }
                     })
                     .collect();
-                Some(a)
+                a
             });
         match act {
-            Some(Some(v)) => {
+            Some(v) => {
                 Ok(&mut v.child_activities)
             }
             _ => Err(())
