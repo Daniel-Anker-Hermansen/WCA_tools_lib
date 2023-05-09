@@ -3,19 +3,21 @@ mod manage_competitions;
 mod secret;
 mod base;
 mod requests;
+mod staging;
 
 pub use traits::*;
 pub use manage_competitions::*;
 pub use secret::*;
 pub use base::*;
 pub use requests::*;
+pub use staging::*;
 
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct ApiError {
     pub error: String,
-    pub error_description: String,
+    pub error_description: Option<String>,
 }
 
 #[derive(Debug)]

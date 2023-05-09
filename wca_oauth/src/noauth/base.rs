@@ -38,6 +38,10 @@ impl OAuth for ImplicitOAuth {
         &self.prefix
     }
 
+    fn set_prefix(&mut self, prefix: String) {
+        self.prefix = prefix;
+    }
+
     async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error> {
         let url = format!("{}{}", self.prefix, suffix);
         
@@ -50,3 +54,49 @@ impl OAuth for ImplicitOAuth {
             .await
     }
 }
+
+impl LoggedIn for ImplicitOAuth { }
+
+pub struct PublicApi {
+    client: Client,
+    prefix: String,
+}
+
+impl PublicApi {
+    pub fn new() -> PublicApi {
+        PublicApi { client: Client::new(), prefix: "https://www.worldcubeassociation.org/api/v0/".to_owned() }
+    }
+    
+    pub fn staging() -> PublicApi {
+        PublicApi { client: Client::new(), prefix: "https://staging.worldcubeassociation.org/api/v0/".to_owned() }
+    }
+}
+
+#[async_trait]
+impl OAuth for PublicApi {
+    type Email = ();
+
+    type ManageCompetitions = ();
+
+    type DateOfBirth = ();
+
+    fn prefix(&self) ->  &str {
+        &self.prefix
+    }
+
+    fn set_prefix(&mut self, prefix: String) {
+        self.prefix = prefix;
+    }
+
+    async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error> {
+        let url = format!("{}{}", self.prefix, suffix);
+        
+        self.client
+            .get(&url)
+            .send()
+            .await?
+            .text()
+            .await
+    }
+}
+

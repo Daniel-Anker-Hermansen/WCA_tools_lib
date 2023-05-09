@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use super::*;
 
@@ -14,18 +16,21 @@ pub trait OAuth {
     
     type DateOfBirth: DateOfBirth;
 
-    async fn me(&self) -> String {
-        self.custom_route("me").await.unwrap()
-    }
-
-    async fn wcif(&self, competition_name: &str) -> String where Self: OAuth<ManageCompetitions = ManageCompetitionTypes> {
-        let suffix = format!("competitions/{}/wcif", competition_name);
-        self.custom_route(&suffix).await.unwrap()
+    fn competitions(&self) -> CompetitionsEndpoint<'_, Self> {
+        CompetitionsEndpoint { query: HashMap::new(), inner: self }
     }
 
     fn prefix(&self) -> &str;
 
+    fn set_prefix(&mut self, prefix: String);
+
     async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error>;
+}
+
+pub trait LoggedIn: OAuth { 
+    fn me(&self) -> MeEndpoint<'_, Self> where Self: LoggedIn {
+        MeEndpoint { inner: self }
+    }    
 }
 
 #[async_trait]
@@ -52,11 +57,15 @@ pub trait OAuthBuilder: Sized {
     type ImplicitOAuth: OAuth + Sync + Send;
 
     fn with_secret(self, client_id: String, secret: String, redirect_uri: String) -> WithSecret<Self> {
-        WithSecret { client_id, secret, redirect_uri, inner: self }
+        WithSecret { client_id, secret, redirect_uri, inner: self, url: "https://staging.worldcubeassociation.org/oauth/token".to_owned() }
     }
 
     fn with_manage_competition_scope(self) -> WithManageCompetition<Self> {
         WithManageCompetition(self)
+    }
+
+    fn staging(self) -> StagingBuilder<Self> {
+        StagingBuilder(self)
     }
 
     fn scopes(&self) -> Vec<&str>;
@@ -68,7 +77,12 @@ pub trait OAuthBuilder: Sized {
 pub trait OAuthBuilderWithSecret: Sized + OAuthBuilder {
     type ExplicitOAuth: OAuth + Refreshable + Sync + Send;
 
+    fn set_url(&mut self, url: String);
+
     async fn authenticate_explicit(self, access_code: String) -> Result<Self::ExplicitOAuth, Error>;
 }
 
+pub trait OAuthManageCompetitions { }
+
+impl<T> OAuthManageCompetitions for T where T: OAuth<ManageCompetitions = ManageCompetitionTypes> { }
 

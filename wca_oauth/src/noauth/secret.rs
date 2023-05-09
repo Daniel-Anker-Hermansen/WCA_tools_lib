@@ -26,10 +26,16 @@ impl<T> OAuth for ExplicitOauth<T> where T: OAuth + Send + Sync {
         self.inner.prefix()
     }
 
+    fn set_prefix(&mut self, prefix: String) {
+        self.inner.set_prefix(prefix);
+    }
+
     async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error> {
         self.inner.custom_route(suffix).await
     }
 }
+
+impl<T> LoggedIn for ExplicitOauth<T> where T: OAuth + Send + Sync { }
 
 #[async_trait]
 impl<T> Refreshable for ExplicitOauth<T> where T: OAuth + Send + Sync {
@@ -48,6 +54,7 @@ pub struct WithSecret<T> {
     pub(super) secret: String,
     pub(super) redirect_uri: String,
     pub(super) inner: T,
+    pub(super) url: String,
 }
 
 impl<T> OAuthBuilder for WithSecret<T> where T: OAuthBuilder {
@@ -66,6 +73,10 @@ impl<T> OAuthBuilder for WithSecret<T> where T: OAuthBuilder {
 impl<T> OAuthBuilderWithSecret for WithSecret<T> where T: OAuthBuilder + Send {
     type ExplicitOAuth = ExplicitOauth<T::ImplicitOAuth>;
 
+    fn set_url(&mut self, url: String) {
+        self.url = url;
+    }
+
     async fn authenticate_explicit(self, access_code: String) -> Result<Self::ExplicitOAuth, Error> {
         let params = [
             ("grant_type", "authorization_code"),
@@ -75,10 +86,8 @@ impl<T> OAuthBuilderWithSecret for WithSecret<T> where T: OAuthBuilder + Send {
             ("code", access_code.trim()),
         ];
 
-        let url = "https://www.worldcubeassociation.org/oauth/token";
-
         let response = Client::new()
-            .post(url)
+            .post(&self.url)
             .form(&params)
             .send()
             .await?

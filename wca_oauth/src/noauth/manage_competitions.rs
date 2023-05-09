@@ -21,6 +21,10 @@ impl<T> OAuthBuilder for WithManageCompetition<T> where T: OAuthBuilder {
 impl<T> OAuthBuilderWithSecret for WithManageCompetition<T> where T: OAuthBuilderWithSecret + Send {
     type ExplicitOAuth = ManageCompetitionsScope<T::ExplicitOAuth>;
 
+    fn set_url(&mut self, url: String) {
+        self.0.set_url(url);
+    }
+
     async fn authenticate_explicit(self, access_code: String) -> Result<Self::ExplicitOAuth, Error> {
         match self.0.authenticate_explicit(access_code).await {
             Ok(inner) => if inner.scopes().contains(&"manage_competitions") {
@@ -52,11 +56,17 @@ impl<T> OAuth for ManageCompetitionsScope<T> where T: OAuth + Sync {
         self.0.prefix()
     }
 
+    fn set_prefix(&mut self, prefix: String) {
+        self.0.set_prefix(prefix)
+    }
+
     async fn custom_route(&self, suffix: &str) -> Result<String, reqwest::Error> {
         let result = self.0.custom_route(suffix);
         result.await
     }
 }
+
+impl<T> LoggedIn for ManageCompetitionsScope<T> where T: OAuth + Send + Sync { }
 
 #[async_trait]
 impl<T> Refreshable for ManageCompetitionsScope<T> where T: Refreshable + Send {
