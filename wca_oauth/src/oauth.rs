@@ -59,7 +59,7 @@ impl OAuth {
 
         //Request token
         let response = self.client
-            .post("https://www.worldcubeassociation.org/oauth/token")
+            .post("https://api.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
             .await.unwrap()
@@ -82,7 +82,7 @@ impl OAuth {
 
         //Request token
         let response = self.client
-            .post("https://www.worldcubeassociation.org/oauth/token")
+            .post("https://api.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
             .await.unwrap()
@@ -96,7 +96,7 @@ impl OAuth {
     }
 
     pub async fn get_wcif_api(self: &Self, id: &str) -> String {
-        let get_url = format!("https://www.worldcubeassociation.org/api/v0/competitions/{}/wcif", id);
+        let get_url = format!("https://api.worldcubeassociation.org/competitions/{}/wcif", id);
         //Request wcif
         let response = self.client
             .get(&get_url)
@@ -115,7 +115,7 @@ impl OAuth {
     }
 
     pub async fn get_competitions_managed_by_me(&self) -> Vec<Competition> {
-        let url = "https://www.worldcubeassociation.org/api/v0/competitions?managed_by_me=true";
+        let url = "https://api.worldcubeassociation.org/competitions?managed_by_me=true";
 
         let json = self.client
             .get(url)
@@ -129,7 +129,7 @@ impl OAuth {
     }
 
     async fn patch_wcif(&self, wcif: &Wcif, id: &str) -> String {
-        let patch_url = format!("https://www.worldcubeassociation.org/api/v0/competitions/{}/wcif", id);
+        let patch_url = format!("https://api.worldcubeassociation.org/competitions/{}/wcif", id);
 
         let json = serde_json::to_string(wcif).unwrap();
 
