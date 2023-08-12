@@ -59,7 +59,7 @@ impl OAuth {
 
         //Request token
         let response = self.client
-            .post("https://api.worldcubeassociation.org/oauth/token")
+            .post("https://www.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
             .await.unwrap()
@@ -82,7 +82,7 @@ impl OAuth {
 
         //Request token
         let response = self.client
-            .post("https://api.worldcubeassociation.org/oauth/token")
+            .post("https://www.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
             .await.unwrap()
