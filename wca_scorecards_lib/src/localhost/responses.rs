@@ -8,14 +8,12 @@ pub async fn generate_pdf(eventid: &str, round: usize, groups: Vec<Vec<usize>>, 
         groups.into_iter()
             .map(|group| {
                     let no_of_stages = (group.len() + stages.capacity as usize - 1) / stages.capacity as usize;
-                    let lower_per_stage = group.len() / no_of_stages;
-                    let leftover = group.len() - lower_per_stage * no_of_stages;
-                    let splits = (0..no_of_stages).map(|i| lower_per_stage * i + i.min(leftover));
-                    group.into_iter().enumerate().map(|(idx, id)| {
-                        let (stage, lower) = splits.clone().enumerate().rev().find(|(_, lower)| *lower <= idx).expect("First is 0");
-                        let station = stages.capacity as usize * stage + idx - lower + 1;
-                        (id, station)
-                    }).collect()  
+                    (0..no_of_stages).cycle().zip(group).enumerate()
+                        .map(|(idx, (i, g))| {
+                            let station = stages.capacity as usize * i + idx / no_of_stages + 1;
+                            (station, g)
+                        })
+                        .collect()
                 })
             .collect()
     }
