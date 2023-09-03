@@ -11,7 +11,7 @@ pub async fn generate_pdf(eventid: &str, round: usize, groups: Vec<Vec<usize>>, 
                     (0..no_of_stages).cycle().zip(group).enumerate()
                         .map(|(idx, (i, g))| {
                             let station = stages.capacity as usize * i + idx / no_of_stages + 1;
-                            (station, g)
+                            (g, station)
                         })
                         .collect()
                 })
