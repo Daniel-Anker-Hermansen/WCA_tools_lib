@@ -98,7 +98,7 @@ fn get_advancement_amount(round: &Round, advancement_condition: &Option<Advancem
         None => None,
         Some(v) => Some( match v {
             AdvancementCondition::Percent(level) => number_of_competitors * level / 100,
-            AdvancementCondition::Ranking(level) => *level,
+            AdvancementCondition::Ranking(level) => (number_of_competitors * 75 / 100).min(*level),
             AdvancementCondition::AttemptResult(level) => {
                 let mut intermediate = round.results.iter().collect::<Vec<_>>();
                 intermediate.sort_by_key(|r| r.ranking);

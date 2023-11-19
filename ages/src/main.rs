@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Range};
 use wca_oauth::Datelike;
 
 const ANONYMOUS: [usize; 0] = [];
-const AGE_GROUPS: [Range<i32>; 6] =[0..12, 12..14, 14..18, 18..22, 22..40, 40..100];
+const AGE_GROUPS: [Range<i32>; 6] =[0..12, 12..14, 14..18, 18..22, 22..40, 40..1000];
 
 fn main() {
     let wcif = wca_oauth::parse(std::fs::read_to_string("wcif.json").unwrap()).unwrap();
@@ -16,7 +16,7 @@ fn main() {
             let year = bd.year();
             let month = bd.month();
             let day = bd.day();
-            let age = 2022 - year - if month > 9 || (month == 9 && day >= 4) { 1 } else { 0 };
+            let age = 2023 - year - if month > 9 || (month == 9 && day > 10) { 1 } else { 0 };
             (person.registrant_id.unwrap(), (age, &person.name))
         })
         .collect::<HashMap<_, _>>();
@@ -29,6 +29,7 @@ fn main() {
         .fold(HashMap::new(), |mut acc, result| {
             let id = result.person_id;
             let ranking = result.ranking;
+            eprintln!("{}: {:?}", age_map.get(&id).map(|t| t.1).unwrap_or(&"".to_string()), ranking);
             match ranking {
                 Some(v) => {
                     acc.insert(id, v);
