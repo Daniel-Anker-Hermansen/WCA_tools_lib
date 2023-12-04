@@ -34,7 +34,7 @@ fn main() {
                 Some(v) => {
                     acc.insert(id, v);
                 }
-                None => ()
+                None => drop(acc.insert(id, usize::MAX)),
             }
             acc
         })
