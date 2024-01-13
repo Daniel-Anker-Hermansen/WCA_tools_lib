@@ -1,3 +1,5 @@
+#![feature(array_windows)]
+
 use pdf::{run, save_pdf};
 use scorecard_to_pdf::{Language, Scorecard, Return};
 
