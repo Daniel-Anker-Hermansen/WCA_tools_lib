@@ -35,8 +35,10 @@ pub async fn generate_pdf(eventid: &str, round: usize, groups: Vec<Vec<usize>>, 
                             if person.registrant_id == Some(*id) {
                                 // Push competing assignet to current group
                                 person.assignments.push(Assignment { activity_id, assignment_code: AssignmentCode::Competitor, station_number: Some(*station) });
-                                // Push judge assignment to next group
-                                person.assignments.push(Assignment { activity_id: next_activity_id, assignment_code: AssignmentCode::Judge, station_number: None });
+                                if activity_id != next_activity_id {
+                                    // Push judge assignment to next group
+                                    person.assignments.push(Assignment { activity_id: next_activity_id, assignment_code: AssignmentCode::Judge, station_number: None });
+                                }
                             }
                         });
                     }
