@@ -16,7 +16,7 @@ pub struct Competition {
     pub short_name: String,
     pub city: String,
     pub venue_address: String,
-    pub venue_details: String,
+    pub venue_details: Option<String>,
     pub latitude_degrees: f64,
     pub longitude_degrees: f64,
     pub country_iso2: String,
