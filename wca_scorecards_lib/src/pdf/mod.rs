@@ -3,7 +3,7 @@ use std::fs::File;
 use crate::ScorecardOrdering;
 use crate::wcif::get_round_json;
 use scorecard_to_pdf::{Scorecard, TimeLimit, scorecards_to_pdf, Language};
-use wca_oauth::WcifContainer;
+use wca_oauth::{WcifContainer, Wcif};
 use scorecard_to_pdf::Return;
 
 #[derive(Clone)]
@@ -84,7 +84,7 @@ pub(crate) fn run(groups_csv: &str, limit_csv: Option<String>, competition: &str
         .flatten()
         .map(|(id, event, group, station)|{
             Scorecard {
-                id,
+                id: Some(id),
                 group,
                 round: 1,
                 station,
@@ -154,7 +154,7 @@ pub(crate) fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize,
                         round,
                         group: n,
                         station: Some(station),
-                        id,
+                        id: Some(id),
                         stage: Some((station as u32 - 1) / stages.capacity),
                     }
                 })
@@ -174,4 +174,36 @@ fn usize_from_iter<'a, I>(iter: &mut I) -> usize where I: Iterator<Item = &'a st
         Err(_) => panic!("Malformatted input file. Expected positive integer, but received other charachters"),
         Ok(v) => v
     }
+}
+
+pub(crate) fn blank_for_subsequent(wcif: &Wcif, stations: usize) -> Return {
+    let name = &wcif.name;
+    let mut scorecards = Vec::new();
+    for event in &wcif.events {
+        let event_name = &event.id;
+        let mut prev_round_competitors = wcif.persons.iter().filter(|p| p.registration.as_ref().map(|r| r.event_ids.contains(event_name) && r.status == "accepted").unwrap_or(false)).count();
+        for (i, r) in event.rounds.windows(2).enumerate() {
+            let advancement_cond = &r[0].advancement_condition;
+            let count = crate::wcif::get_max_advancement(prev_round_competitors, advancement_cond);
+            let groups = count.div_ceil(stations);
+            let count_per_group = count / groups;
+            let leftover = count % groups;
+            for group in 1..=groups {
+                let c = count_per_group + (leftover >= group) as usize;
+                for j in 1..=c {
+                    scorecards.push(Scorecard {
+                        event: event_name,
+                        round: i + 2,
+                        group,
+                        station: Some(j),
+                        id: None,
+                        stage: None,
+                    });
+                }
+            }
+            prev_round_competitors = count;
+        }
+    }
+
+    scorecard_to_pdf::scorecards_to_pdf(scorecards, name, &HashMap::new(), &HashMap::new(), Language::english())
 }

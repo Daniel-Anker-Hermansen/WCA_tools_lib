@@ -1,5 +1,3 @@
-#![feature(array_windows)]
-
 use pdf::{run, save_pdf};
 use scorecard_to_pdf::{Language, Scorecard, Return};
 
@@ -47,6 +45,13 @@ pub fn round_1_scorecards_in_memory_for_python(groups_csv: String, limit_csv: Op
         Return::Zip(b) => (b, ".zip")
     };
     data
+}
+
+pub fn blank_for_subsequent_rounds(wcif_path: &str, stations: usize) {
+    let wcif = std::fs::read_to_string(wcif_path).unwrap();
+    let wcif = wca_oauth::parse(wcif).unwrap();
+    let data = pdf::blank_for_subsequent(wcif.get(), stations);
+    save_pdf(data, &wcif.get().short_name, "").unwrap();
 }
 
 #[derive(Clone, Copy)]

@@ -11,7 +11,7 @@ pub struct Scorecard<'a> {
     pub round: usize,
     pub group: usize,
     pub station: Option<usize>,
-    pub id: usize,
+    pub id: Option<usize>,
     pub stage: Option<u32>
 }
 
@@ -60,11 +60,11 @@ impl<'a> MaybeScorecard<'a> {
     }
 
     pub fn id(&self) -> String {
-        self.internal_or_default(|s| s.id.to_string(), "".to_string())
+        self.internal_or_default(|s| s.id.map(|id| id.to_string()).unwrap_or_default(), "".to_string())
     }
 
-    pub fn name(&'a self, map: &'a HashMap<usize, String>) -> &'a str {
-        self.internal_or_default(|s| &map[&s.id], "")
+    pub fn name(&'a self, map: &'a HashMap<usize, String>) -> Option<&'a str> {
+        self.internal_or_default(|s| s.id.map(|id| map[&id].as_str()), Some(""))
     }
 
     pub fn limit(&'a self, limit: &'a HashMap<&str, TimeLimit>) -> &'a TimeLimit {
@@ -107,7 +107,7 @@ pub fn scorecards_to_pdf(scorecards: Vec<Scorecard>, competition: &str, map: &Ha
 
 pub fn scorecards_to_pdf_internal(scorecards: Vec<Scorecard>, competition: &str, map: &HashMap<usize, String>, limits: &HashMap<&str, TimeLimit>, language: &Language) -> PdfDocumentReference {
     let mut scorecard_generator = ScorecardGenerator::new(competition);
-    let mut scorecards: Vec<MaybeScorecard> = scorecards.into_iter().map(|scorecard|MaybeScorecard::Normal(scorecard)).collect();
+    let mut scorecards: Vec<MaybeScorecard> = scorecards.into_iter().map(|scorecard| MaybeScorecard::Normal(scorecard)).collect();
     while scorecards.len() % 6 != 0 {
         scorecards.push(MaybeScorecard::Blank);
     }

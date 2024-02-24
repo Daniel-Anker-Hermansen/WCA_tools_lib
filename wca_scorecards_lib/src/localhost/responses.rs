@@ -27,7 +27,7 @@ pub async fn generate_pdf(eventid: &str, round: usize, groups: Vec<Vec<usize>>, 
                 // Add the first activity id to the end so that we can use array_windows.
                 activity_ids.extend_from_within(..1);
                 for (group, [activity_id, next_activity_id]) in groups_with_stations.iter()
-                    .zip(activity_ids.array_windows().cloned())
+                    .zip(activity_ids.windows(2).map(|e| [e[0], e[1]]))
                 {
                     for (id, station) in group.into_iter() {
                         //This runs in O(nm) time which is horrible, when it could run in O(n) time but n and m are both small so i will let it be for now :)

@@ -118,6 +118,17 @@ fn get_advancement_amount(round: &Round, advancement_condition: &Option<Advancem
     }
 }
 
+pub fn get_max_advancement(count: usize, advancement_condition: &Option<AdvancementCondition>) -> usize {
+    match advancement_condition {
+        None => count * 75 / 100,
+        Some(v) => match v {
+            AdvancementCondition::Percent(level) => count * level / 100,
+            AdvancementCondition::Ranking(level) => (count * 75 / 100).min(*level),
+            AdvancementCondition::AttemptResult(_) => count * 75 / 100,
+        }
+    }
+}
+
 pub fn get_id_map(wcif: &WcifContainer) -> HashMap<usize, String> {
     wcif.persons_iter().filter_map(|p| p.registrant_id.map(|v|(v, p.name.clone()))).collect()
 }

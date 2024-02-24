@@ -21,7 +21,7 @@ pub fn draw_scorecard(generator: &mut ScorecardGenerator, scorecard: &MaybeScore
     generator.draw_square(5.0, 15.0, 10.0, 5.5);
     generator.write(&scorecard.id(), 10.0, 19.0, 10.0, Center, Normal);
     generator.draw_square(15.0, 15.0, 85.0, 5.5);
-    generator.write(scorecard.name(map), 16.0, 19.0, 10.0, Left, Normal);
+    generator.write(scorecard.name(map).unwrap_or(""), 16.0, 19.0, 10.0, Left, Normal);
 
     let attempts_amount = match scorecard.event() {
         "666" | "777" | "333mbf" | "333bf" | "444bf" | "555bf" => 3,
