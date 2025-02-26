@@ -125,8 +125,6 @@ impl OAuth {
             .text()
             .await.unwrap();
 
-        dbg!(&json);
-        
         Competition::from_json(&json)
     }
 
