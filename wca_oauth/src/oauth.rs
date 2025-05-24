@@ -248,7 +248,7 @@ impl WcifContainer {
             .collect()
     }
 
-    pub fn add_groups_to_event(&mut self, event: &str, round: usize, no: usize) -> std::result::Result<&mut Vec<Activity>, ()> {
+    pub fn add_groups_to_event(&mut self, event: &str, round: usize, no: usize, subgroups: usize) -> std::result::Result<&mut Vec<Activity>, ()> {
         let act = self.wcif.schedule.venues.iter_mut()
             .flat_map(|v|&mut v.rooms)
             .flat_map(|r|&mut r.activities)
@@ -262,10 +262,10 @@ impl WcifContainer {
                         person.assignments.retain(|act| !ids.contains(&act.activity_id));
                     }
                 }
-                a.child_activities = (0..no).map(|g|{
+                a.child_activities = (0..no * subgroups).map(|g|{
                     let group_time = (a.end_time - a.start_time) / no as i32;
-                    let start_time = a.start_time + (group_time * g as i32);
-                    let end_time = a.start_time + (group_time * (g as i32 + 1));
+                    let start_time = a.start_time + (group_time * (g / subgroups) as i32);
+                    let end_time = a.start_time + (group_time * ((g / subgroups) as i32 + 1));
                     Activity { 
                         id: a.id * 1000 + g, 
                         name: format!("{}, Group {}", a.name, g + 1), 

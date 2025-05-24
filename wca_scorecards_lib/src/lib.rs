@@ -21,7 +21,7 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     let b = args.next().unwrap();
     let b = std::fs::read_to_string(b).unwrap();
     let c = args.next().unwrap();
-    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX), ScorecardOrdering::Default);
+    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX, false), ScorecardOrdering::Default);
 }
 
 pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages, sort_by_name: bool) {
@@ -38,7 +38,7 @@ pub fn blank_scorecard_page(competition: &str) {
 
 pub fn round_1_scorecards_in_memory_for_python(groups_csv: String, limit_csv: Option<String>, competition: &str, no_stages: u32, per_stage: u32, sort_by_name: bool)-> Vec<u8> {
     let compare = ScorecardOrdering::from_bool(sort_by_name);
-    let stages = Stages::new(no_stages,per_stage);
+    let stages = Stages::new(no_stages,per_stage, false);
     let scorecards = run(&groups_csv, limit_csv, competition, Language::english(), stages, compare);
     let (data, _name) = match scorecards {
         Return::Pdf(b) => (b, ".pdf"),

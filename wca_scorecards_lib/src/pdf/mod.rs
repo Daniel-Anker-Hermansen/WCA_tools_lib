@@ -11,11 +11,12 @@ pub struct Stages {
     #[allow(unused)]
     pub(crate) no: u32,
     pub(crate) capacity: u32,
+    pub(crate) seperate_stages: bool,
 }
 
 impl Stages {
-    pub fn new(no: u32, capacity: u32) -> Stages {
-        Stages { no, capacity }
+    pub fn new(no: u32, capacity: u32, seperate_stages: bool) -> Stages {
+        Stages { no, capacity, seperate_stages }
     }
 }
 
@@ -152,8 +153,8 @@ pub(crate) fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize,
                     Scorecard {
                         event,
                         round,
-                        group: n,
-                        station: Some(station),
+                        group: if stages.seperate_stages { (n - 1) * stages.no as usize + 1 + station / stages.capacity as usize } else { n },
+                        station: Some(if stages.seperate_stages { (station -  1) % stages.capacity as usize  + 1 } else { station }),
                         id: Some(id),
                         stage: Some((station as u32 - 1) / stages.capacity),
                     }
