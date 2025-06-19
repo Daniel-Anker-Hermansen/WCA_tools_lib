@@ -17,7 +17,7 @@ pub fn draw_scorecard(
 	let name = generator.get_competition_name().to_string();
 	generator.write(&name, 52.5, 7.0, 10.0, Center, Normal);
 	let round_text = format!("{}: {} | ", language.round, scorecard.round());
-	let event_text = format!("{}", get_event(&event));
+	let event_text = get_event(&event).to_string();
 	let group_text = format!(" | {}: {}", language.group, scorecard.group());
 	generator.write_multi_text(
 		52.5,
@@ -178,7 +178,7 @@ pub fn draw_scorecard(
 				.join(&format!(" {} ", language.and_scl))
 		),
 		TimeLimit::Multi => language.multi_tl.to_owned(),
-		TimeLimit::None => format!(""),
+		TimeLimit::None => String::new(),
 	};
 
 	if generator.get_width_of_string(&limit, 7.0, Normal) <= 95.0 {
@@ -191,7 +191,7 @@ fn time_string(mut z: usize) -> String {
 	if z >= 6000 {
 		let minutes = z / 6000;
 		let res = format!("{}:", minutes);
-		z = z % 6000;
+		z %= 6000;
 		format!("{}{:02}.{:02}", res, z / 100, z % 100)
 	} else {
 		format!("{}.{:02}", z / 100, z % 100)

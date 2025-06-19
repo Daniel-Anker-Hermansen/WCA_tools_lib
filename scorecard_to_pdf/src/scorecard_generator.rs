@@ -174,7 +174,7 @@ impl<'a> ScorecardGenerator<'a> {
 	}
 
 	pub fn get_competition_name(&self) -> &str {
-		&self.competition_name
+		self.competition_name
 	}
 
 	pub fn doc(self) -> PdfDocumentReference {
