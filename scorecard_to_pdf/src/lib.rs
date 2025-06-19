@@ -12,7 +12,7 @@ use scorecard_generator::ScorecardGenerator;
 
 pub use printpdf::Error;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Scorecard<'a> {
 	pub event: Option<&'a str>,
 	pub round: Option<u32>,
@@ -71,6 +71,7 @@ impl Scorecard<'_> {
 	}
 }
 
+#[derive(Clone, Copy)]
 pub struct Competition<'a> {
 	pub name: &'a str,
 	pub time_limits: &'a HashMap<&'a str, TimeLimit>,
@@ -126,7 +127,7 @@ pub fn generate(
 	scorecards: &[Scorecard],
 	competition: Competition,
 	mode: Mode,
-	writer: &mut impl io::Write,
+	writer: impl io::Write,
 ) -> Result<(), Error> {
 	let mut generator = ScorecardGenerator::new(competition.name, mode);
 	let number_of_pages = (scorecards.len() as u32).div_ceil(mode.number_per_page());

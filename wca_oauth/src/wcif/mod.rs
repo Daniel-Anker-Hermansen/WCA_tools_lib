@@ -19,6 +19,7 @@ mod time_limit;
 mod venue;
 mod wca_id;
 
+pub use super::{Date, DateTime};
 pub use activity::*;
 pub use advancement_condition::*;
 pub use assignment::*;
@@ -37,31 +38,42 @@ pub use schedule::*;
 pub use time_limit::*;
 pub use venue::*;
 pub use wca_id::*;
-pub use super::{Date, DateTime};
 
-use crate::WcifContainer;
+use crate::{Error, WcifContainer};
 
 pub type WcifResult = std::result::Result<WcifContainer, WcifError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Wcif {
-    pub format_version: String,
-    pub id: String,
-    pub name: String,
-    pub short_name: String,
-    pub persons: Vec<Person>,
-    pub events: Vec<Event>,
-    pub schedule: Schedule,
-    pub competitor_limit: Option<usize>,
-    pub extensions: Vec<serde_json::Value>,
+	pub format_version: String,
+	pub id: String,
+	pub name: String,
+	pub short_name: String,
+	pub persons: Vec<Person>,
+	pub events: Vec<Event>,
+	pub schedule: Schedule,
+	pub competitor_limit: Option<usize>,
+	pub extensions: Vec<serde_json::Value>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct WcifError {
-    pub error: String
+	pub error: String,
 }
 
-pub fn parse(json: String) -> WcifResult {
-    serde_json::from_str(&json).map(|wcif|WcifContainer::new(wcif)).map_err(|_| serde_json::from_str(&json).unwrap())
+impl From<WcifError> for Error {
+	fn from(value: WcifError) -> Self {
+		Error::Wcif(value.error)
+	}
+}
+
+pub fn parse(json: String) -> core::result::Result<WcifContainer, Error> {
+	serde_json::from_str(&json)
+		.map(WcifContainer::new)
+		.map_err(|_| {
+			serde_json::from_str::<WcifError>(&json)
+				.map(Into::into)
+				.unwrap_or_else(Into::into)
+		})
 }

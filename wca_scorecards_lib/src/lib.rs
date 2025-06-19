@@ -1,82 +1,157 @@
-use pdf::{run, save_pdf};
-use scorecard_to_pdf::{Language, Scorecard, Return};
+use std::{collections::HashMap, io};
 
+use scorecard_to_pdf::{Competition, Scorecard};
+
+mod localhost;
+mod parse;
 mod pdf;
 pub mod wcif;
-mod localhost;
 
-pub use pdf::Stages;
 pub use localhost::responses::generate_pdf;
+pub use scorecard_to_pdf::{Error as ScorecardsPdfError, Mode};
 
-#[allow(deprecated)]
-#[deprecated]
-pub fn print_round_1<I>(args: &mut I) where I: Iterator<Item = String> {
-    print_round_1_with_language(args, Language::english());
+pub enum Output {
+	Pdf(Vec<u8>),
+	Zip(Vec<u8>),
 }
 
-#[deprecated]
-pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I: Iterator<Item = String> {
-    let a = args.next().unwrap();
-    let a = std::fs::read_to_string(a).unwrap();
-    let b = args.next().unwrap();
-    let b = std::fs::read_to_string(b).unwrap();
-    let c = args.next().unwrap();
-    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX, false), ScorecardOrdering::Default);
+#[derive(Clone)]
+pub struct Stages {
+	pub number: u32,
+	pub stations_per_stage: u32,
+	pub seperate_stages: bool,
 }
 
-pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages, sort_by_name: bool) {
-    let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
-    let limit_csv = limit_csv.map(|x| std::fs::read_to_string(x).unwrap());
-    let compare = ScorecardOrdering::from_bool(sort_by_name);
-    let scorecards = run(&groups_csv, limit_csv, competition, Language::english(), stages, compare);
-    save_pdf(scorecards, competition, "").unwrap();
+pub use parse::ParseError;
+
+pub enum ScorecardsError {
+	ScorecardsPdfError(ScorecardsPdfError),
+	ParseError(ParseError),
+	IoError(io::Error),
+	ZipError(zip::result::ZipError),
 }
 
-pub fn blank_scorecard_page(competition: &str) {
-    save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition, "blank_").unwrap();
+impl From<ParseError> for ScorecardsError {
+	fn from(value: ParseError) -> Self {
+		ScorecardsError::ParseError(value)
+	}
 }
 
-pub fn round_1_scorecards_in_memory_for_python(groups_csv: String, limit_csv: Option<String>, competition: &str, no_stages: u32, per_stage: u32, sort_by_name: bool)-> Vec<u8> {
-    let compare = ScorecardOrdering::from_bool(sort_by_name);
-    let stages = Stages::new(no_stages,per_stage, false);
-    let scorecards = run(&groups_csv, limit_csv, competition, Language::english(), stages, compare);
-    let (data, _name) = match scorecards {
-        Return::Pdf(b) => (b, ".pdf"),
-        Return::Zip(b) => (b, ".zip")
-    };
-    data
+impl From<ScorecardsPdfError> for ScorecardsError {
+	fn from(value: ScorecardsPdfError) -> Self {
+		match value {
+			ScorecardsPdfError::Io(error) => ScorecardsError::IoError(error),
+			_ => ScorecardsError::ScorecardsPdfError(value),
+		}
+	}
 }
 
+impl From<io::Error> for ScorecardsError {
+	fn from(value: io::Error) -> Self {
+		ScorecardsError::IoError(value)
+	}
+}
+
+impl From<zip::result::ZipError> for ScorecardsError {
+	fn from(value: zip::result::ZipError) -> Self {
+		ScorecardsError::ZipError(value)
+	}
+}
+
+pub fn generate_from_csv(
+	groups_csv: &str,
+	limit_csv: Option<String>,
+	competition: &str,
+	stages: Stages,
+	ordering: ScorecardOrdering,
+	mode: Mode,
+) -> Result<Output, ScorecardsError> {
+	let groups_csv = std::fs::read_to_string(groups_csv)?;
+	let limit_csv = limit_csv.map(std::fs::read_to_string).transpose()?;
+	let (scorecards, id_map) = parse::parse_groups_csv(&groups_csv, stages)?;
+	let time_limits = parse::parse_limit_csv(limit_csv.as_ref().map(String::as_str))?;
+	let competition = Competition {
+		name: competition,
+		time_limits: &time_limits,
+		id_map: &id_map,
+	};
+	output_pdf(scorecards, competition, mode, ordering).map_err(Into::into)
+}
+
+pub fn blank_scorecard_page(competition: &str, mode: Mode) -> Result<Output, ScorecardsPdfError> {
+	let scorecards = &[Scorecard::blank()];
+	let competition = Competition {
+		name: competition,
+		time_limits: &HashMap::new(),
+		id_map: &HashMap::new(),
+	};
+	let mut data = Vec::new();
+	scorecard_to_pdf::generate(scorecards, competition, mode, io::Cursor::new(&mut data))?;
+	Ok(Output::Pdf(data))
+}
+
+fn output_pdf(
+	mut scorecards: Vec<Vec<Scorecard>>,
+	competition: Competition,
+	mode: Mode,
+	ordering: ScorecardOrdering,
+) -> Result<Output, ScorecardsError> {
+	for scorecards in &mut scorecards {
+		ordering.sort_slice(scorecards);
+	}
+	if scorecards.len() == 1 {
+		let mut data = Vec::new();
+		scorecard_to_pdf::generate(
+			&scorecards[0],
+			competition,
+			mode,
+			io::Cursor::new(&mut data),
+		)?;
+		Ok(Output::Pdf(data))
+	} else {
+		let mut data = Vec::new();
+		let mut zip_writer = zip::ZipWriter::new(io::Cursor::new(&mut data));
+		for (scorecards, stage) in scorecards.into_iter().zip(1u32..) {
+			zip_writer.start_file(
+				format!("{}", stage),
+				zip::write::FileOptions::<()>::default()
+					.compression_method(zip::CompressionMethod::Deflated),
+			)?;
+			scorecard_to_pdf::generate(&scorecards, competition, mode, &mut zip_writer)?;
+		}
+
+		drop(zip_writer);
+		Ok(Output::Zip(data))
+	}
+}
+
+// TODO: Needs reimplementation
+/*
 pub fn blank_for_subsequent_rounds(wcif_path: &str, stations: usize) {
-    let wcif = std::fs::read_to_string(wcif_path).unwrap();
-    let wcif = wca_oauth::parse(wcif).unwrap();
-    let data = pdf::blank_for_subsequent(wcif.get(), stations);
-    save_pdf(data, &wcif.get().short_name, "").unwrap();
+	let wcif = std::fs::read_to_string(wcif_path).unwrap();
+	let wcif = wca_oauth::parse(wcif).unwrap();
+	let data = pdf::blank_for_subsequent(wcif.get(), stations);
+	save_pdf(data, &wcif.get().short_name, "").unwrap();
 }
+*/
 
 #[derive(Clone, Copy)]
 pub enum ScorecardOrdering {
-    Default,
-    ByName,
+	Default,
+	ByName,
 }
 
 impl ScorecardOrdering {
-    fn from_bool(sort_by_name: bool) -> ScorecardOrdering {
-        if sort_by_name {
-            ScorecardOrdering::ByName
-        }
-        else {
-            ScorecardOrdering::Default
-        }
-    }
-
-    fn sort_slice(&self, slice: &mut [Scorecard<'_>]) {
-        match self {
-            ScorecardOrdering::Default => slice.sort(),
-            ScorecardOrdering::ByName => slice.sort_by(|a, b| a.group.cmp(&b.group)
-                .then(a.station.cmp(&b.station))
-                .then(a.id.cmp(&b.id))
-                .then(a.cmp(&b))),
-        }
-    }
+	fn sort_slice(&self, slice: &mut [Scorecard<'_>]) {
+		match self {
+			ScorecardOrdering::Default => slice.sort(),
+			ScorecardOrdering::ByName => slice.sort_by(|a, b| {
+				a.group
+					.cmp(&b.group)
+					.then(a.station.cmp(&b.station))
+					.then(a.id.cmp(&b.id))
+					.then(a.cmp(&b))
+			}),
+		}
+	}
 }
