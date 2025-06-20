@@ -2,13 +2,12 @@ use std::{collections::HashMap, io};
 
 use scorecard_to_pdf::{Competition, Scorecard};
 
-mod localhost;
 mod parse;
 mod pdf;
 pub mod wcif;
 
-pub use localhost::responses::generate_pdf;
 pub use scorecard_to_pdf::{Error as ScorecardsPdfError, Mode};
+pub use wca_oauth as oauth;
 
 pub enum Output {
 	Pdf(Vec<u8>),
@@ -29,6 +28,7 @@ pub enum ScorecardsError {
 	ParseError(ParseError),
 	IoError(io::Error),
 	ZipError(zip::result::ZipError),
+	OauthError(wca_oauth::Error),
 }
 
 impl From<ParseError> for ScorecardsError {
@@ -55,6 +55,12 @@ impl From<io::Error> for ScorecardsError {
 impl From<zip::result::ZipError> for ScorecardsError {
 	fn from(value: zip::result::ZipError) -> Self {
 		ScorecardsError::ZipError(value)
+	}
+}
+
+impl From<wca_oauth::Error> for ScorecardsError {
+	fn from(value: wca_oauth::Error) -> Self {
+		ScorecardsError::OauthError(value)
 	}
 }
 
@@ -90,7 +96,7 @@ pub fn blank_scorecard_page(competition: &str, mode: Mode) -> Result<Output, Sco
 	Ok(Output::Pdf(data))
 }
 
-fn output_pdf(
+pub fn output_pdf(
 	mut scorecards: Vec<Vec<Scorecard>>,
 	competition: Competition,
 	mode: Mode,
