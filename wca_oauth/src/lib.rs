@@ -50,10 +50,14 @@ where
 }
 
 pub enum Error {
-	Reqwest(reqwest::Error),
+	Reqwest(NetworkError),
 	Json(serde_json::Error),
 	Wcif(String),
 }
+
+pub use reqwest::Error as NetworkError;
+
+pub use serde_json::Error as JsonError;
 
 impl From<reqwest::Error> for Error {
 	fn from(value: reqwest::Error) -> Self {
