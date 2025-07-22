@@ -11,7 +11,10 @@ pub enum ParseError {
 }
 
 // Currently copied spaghetti code. Should be fixed and proper error handling.
-pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>>, HashMap<u32, &str>), ParseError> {
+pub fn parse_groups_csv(
+	src: &str,
+	stages: Stages,
+) -> Result<(Vec<Vec<Scorecard>>, HashMap<u32, &str>), ParseError> {
 	let mut groups_csv = src.lines();
 	//Header describing csv file formatting. First two are fixed and therfore skipped.
 	//Unwrap cannot fail because the first element of lines always exists, although skip can lead
@@ -20,11 +23,11 @@ pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>
 	let mut map = HashMap::new();
 	let k = groups_csv
 		//Filter off empty lines. Fixes annoying EOF issues.
-		.filter(|x| *x != "")
+		.filter(|x| !x.is_empty())
 		//Map each person to each event they compete in.
 		//Enumerate for panic messages
 		.enumerate()
-		.map(|(line, person)| {
+		.flat_map(|(line, person)| {
 			let mut iter = person.split(",");
 			let name = match iter.next() {
 				None => panic!("Line {} in csv missing name", line + 2),
@@ -34,7 +37,7 @@ pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>
 				None => panic!("Line {} in csv missing id", line + 2),
 				Some(v) => v,
 			};
-			let id = match u32::from_str_radix(id, 10) {
+			let id = match id.parse() {
 				Err(_) => panic!(
 					"Id for {} in line {} is not a positive integer",
 					name,
@@ -47,12 +50,12 @@ pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>
 			//Zipping with header (clone) to know the order of events.
 			iter.zip(header.clone()).filter_map(move |(asign, event)| {
 				//Test whether competitor is assigned.
-				if asign == "" {
-					return None;
+				if asign.is_empty() {
+					None
 				} else {
 					let mut info = asign.split(";");
 					let pre_group = info.next()?;
-					let group = match u32::from_str_radix(pre_group, 10) {
+					let group = match pre_group.parse() {
 						Err(_) => panic!(
 							"Group number for event {} in line {} is nut a positive integer",
 							event,
@@ -60,7 +63,7 @@ pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>
 						),
 						Ok(v) => v,
 					};
-					let station = info.next().map(|v| match u32::from_str_radix(v, 10) {
+					let station = info.next().map(|v| match v.parse() {
 						Err(_) => panic!(
 							"Station number for event {} in line {} is not a positive integer",
 							event,
@@ -69,13 +72,12 @@ pub fn parse_groups_csv(src: &str, stages: Stages) -> Result<(Vec<Vec<Scorecard>
 						Ok(v) => v,
 					});
 					let stage = station
-						.map(|x| (x as u32 - 1) / stages.stations_per_stage)
+						.map(|x| (x - 1) / stages.stations_per_stage)
 						.unwrap_or(0);
 					Some((id, event, group, station, stage))
 				}
 			})
 		})
-		.flatten()
 		.map(|(id, event, group, station, stage)| {
 			(
 				Scorecard {
@@ -147,7 +149,7 @@ pub fn parse_limit_csv(src: Option<&str>) -> Result<HashMap<&str, TimeLimit>, Pa
 						_ => panic!("Malformatted time limit for event: {}", event),
 					};
 					Ok(())
-				});
+				})?;
 			Ok(limits)
 		}
 		None => Ok(HashMap::new()),
@@ -160,7 +162,6 @@ where
 {
 	iter.next()
 		.map(str::parse)
-		.map(Result::ok)
-		.flatten()
+		.and_then(Result::ok)
 		.ok_or(ParseError::IllegalNumber(0))
 }

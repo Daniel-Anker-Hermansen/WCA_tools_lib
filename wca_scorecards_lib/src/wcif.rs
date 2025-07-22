@@ -6,13 +6,12 @@ use scorecard_to_pdf::TimeLimit;
 
 pub fn get_rounds(wcif: &mut WcifContainer) -> Vec<(String, usize)> {
 	wcif.events_iter()
-		.map(|event| event.rounds.iter().map(|round| round.id.to_string()))
-		.flatten()
+		.flat_map(|event| event.rounds.iter().map(|round| round.id.to_string()))
 		.map(|str| {
 			let mut iter = str.split("-r");
 			(
 				iter.next().unwrap().to_string(),
-				usize::from_str_radix(iter.next().unwrap(), 10).unwrap(),
+				iter.next().unwrap().parse().unwrap(),
 			)
 		})
 		.collect()
@@ -75,11 +74,10 @@ pub fn wca_live_get_competitors_for_round(
 
 	// Now actually get those who proceeded
 	let round_json = get_round_json(wcif, event, round).expect("Round should exist");
-	let mut advancement_ids = wca_live_get_advancement_ids(&round_json);
+	let mut advancement_ids = wca_live_get_advancement_ids(round_json);
 	if !advancement_ids.is_empty() {
 		if !advancement_ids_prev.is_empty() {
-			advancement_ids
-				.sort_by_key(|&x| advancement_ids_prev.get(&x).unwrap_or(&std::usize::MAX));
+			advancement_ids.sort_by_key(|&x| advancement_ids_prev.get(&x).unwrap_or(&usize::MAX));
 			(advancement_ids, id_map)
 		} else {
 			(advancement_ids, id_map)
@@ -102,7 +100,7 @@ pub fn get_competitors_for_round(
 			.persons_iter()
 			.filter_map(|p| {
 				let reg = p.registration.as_ref()?;
-				if reg.status == format!("accepted") && reg.event_ids.contains(&event.to_string()) {
+				if reg.status == "accepted" && reg.event_ids.contains(&event.to_string()) {
 					Some(p.registrant_id.unwrap())
 				} else {
 					None
@@ -127,32 +125,28 @@ fn get_advancement_amount(
 	advancement_condition: &Option<AdvancementCondition>,
 ) -> Option<usize> {
 	let number_of_competitors = round.results.len();
-	match advancement_condition {
-		None => None,
-		Some(v) => Some(match v {
-			AdvancementCondition::Percent(level) => number_of_competitors * level / 100,
-			AdvancementCondition::Ranking(level) => (number_of_competitors * 75 / 100).min(*level),
-			AdvancementCondition::AttemptResult(level) => {
-				let mut intermediate = round.results.iter().collect::<Vec<_>>();
-				intermediate.sort_by_key(|r| r.ranking);
-				let x = intermediate
-					.into_iter()
-					.enumerate()
-					.find(|(_, result)| match result.average {
-						AttemptResult::DNF | AttemptResult::DNS | AttemptResult::Skip => true,
-						AttemptResult::Ok(average) => average as usize > *level,
-					})
-					.map(|(x, _)| x);
-				let percent =
-					get_advancement_amount(round, &Some(AdvancementCondition::Percent(75)))
-						.unwrap();
-				match x {
-					Some(v) if v < percent => v,
-					_ => percent,
-				}
+	advancement_condition.as_ref().map(|v| match v {
+		AdvancementCondition::Percent(level) => number_of_competitors * level / 100,
+		AdvancementCondition::Ranking(level) => (number_of_competitors * 75 / 100).min(*level),
+		AdvancementCondition::AttemptResult(level) => {
+			let mut intermediate = round.results.iter().collect::<Vec<_>>();
+			intermediate.sort_by_key(|r| r.ranking);
+			let x = intermediate
+				.into_iter()
+				.enumerate()
+				.find(|(_, result)| match result.average {
+					AttemptResult::DNF | AttemptResult::DNS | AttemptResult::Skip => true,
+					AttemptResult::Ok(average) => average > *level,
+				})
+				.map(|(x, _)| x);
+			let percent =
+				get_advancement_amount(round, &Some(AdvancementCondition::Percent(75))).unwrap();
+			match x {
+				Some(v) if v < percent => v,
+				_ => percent,
 			}
-		}),
-	}
+		}
+	})
 }
 
 pub fn get_max_advancement(
@@ -186,7 +180,7 @@ fn get_advancement_ids(
 ) -> Vec<usize> {
 	let advancement_amount = get_advancement_amount(round, advancement_condition);
 	match advancement_amount {
-		None => return vec![],
+		None => vec![],
 		Some(advancement_amount) => {
 			let mut intermediate = round.results.iter().collect::<Vec<_>>();
 			intermediate.sort_by_key(|r| r.ranking);
