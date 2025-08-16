@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
+use crate::Competition;
+use crate::*;
 use reqwest::Client;
 use serde::Deserialize;
-use crate::*;
-use crate::Competition;
 
 #[derive(Deserialize)]
 struct AuthResponse {
     access_token: String,
-    refresh_token: String
+    refresh_token: String,
 }
 
 #[derive(Debug)]
@@ -18,35 +18,43 @@ pub struct OAuth {
     client_id: String,
     client_secret: String,
     redirect_uri: String,
-    client: Client
+    client: Client,
 }
 
 impl OAuth {
-    pub async fn get_auth(client_id: String, client_secret: String, redirect_uri: String, auth_code: String) -> Self {
+    pub async fn get_auth(
+        client_id: String,
+        client_secret: String,
+        redirect_uri: String,
+        auth_code: String,
+    ) -> Self {
         let mut oauth = Self {
             access_token: format!(""),
             refresh_token: format!(""),
             client_id,
             client_secret,
             redirect_uri,
-            client: reqwest::Client::new()
+            client: reqwest::Client::new(),
         };
         oauth.get_auth_explicit_flow(auth_code).await;
         oauth
     }
 
     /// If you use this you need to get a token before hand. Refresh cannot be done with this type and will crash.
-    pub async fn get_auth_implicit(client_id: String, access_token: String, redirect_uri: String) -> Self {
+    pub async fn get_auth_implicit(
+        client_id: String,
+        access_token: String,
+        redirect_uri: String,
+    ) -> Self {
         Self {
             access_token,
             refresh_token: String::new(),
             client_id,
             client_secret: String::new(),
             redirect_uri,
-            client: reqwest::Client::new()
+            client: reqwest::Client::new(),
         }
     }
-
 
     async fn get_auth_explicit_flow(&mut self, code: String) {
         let mut params = HashMap::new();
@@ -58,13 +66,16 @@ impl OAuth {
         params.insert("code", &code.trim());
 
         //Request token
-        let response = self.client
+        let response = self
+            .client
             .post("https://www.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
-            .await.unwrap()
+            .await
+            .unwrap()
             .text()
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let auth_response: AuthResponse = serde_json::from_str(&response).unwrap();
 
@@ -81,13 +92,16 @@ impl OAuth {
         params.insert("refresh_token", &self.refresh_token.trim());
 
         //Request token
-        let response = self.client
+        let response = self
+            .client
             .post("https://www.worldcubeassociation.org/oauth/token")
             .form(&params)
             .send()
-            .await.unwrap()
+            .await
+            .unwrap()
             .text()
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let auth_response: AuthResponse = serde_json::from_str(&response).unwrap();
 
@@ -96,15 +110,21 @@ impl OAuth {
     }
 
     pub async fn get_wcif_api(self: &Self, id: &str) -> String {
-        let get_url = format!("https://api.worldcubeassociation.org/competitions/{}/wcif", id);
+        let get_url = format!(
+            "https://api.worldcubeassociation.org/competitions/{}/wcif",
+            id
+        );
         //Request wcif
-        let response = self.client
+        let response = self
+            .client
             .get(&get_url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .send()
-            .await.unwrap()
+            .await
+            .unwrap()
             .text()
-            .await.unwrap();
+            .await
+            .unwrap();
 
         response
     }
@@ -117,31 +137,40 @@ impl OAuth {
     pub async fn get_competitions_managed_by_me(&self) -> Vec<Competition> {
         let url = "https://api.worldcubeassociation.org/competitions?managed_by_me=true";
 
-        let json = self.client
+        let json = self
+            .client
             .get(url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .send()
-            .await.unwrap()
+            .await
+            .unwrap()
             .text()
-            .await.unwrap();
+            .await
+            .unwrap();
 
         Competition::from_json(&json)
     }
 
     async fn patch_wcif(&self, wcif: &Wcif, id: &str) -> String {
-        let patch_url = format!("https://api.worldcubeassociation.org/competitions/{}/wcif", id);
+        let patch_url = format!(
+            "https://api.worldcubeassociation.org/competitions/{}/wcif",
+            id
+        );
 
         let json = serde_json::to_string(wcif).unwrap();
 
-        let response = self.client
+        let response = self
+            .client
             .patch(&patch_url)
             .header("Authorization", format!("Bearer {}", self.access_token))
             .header("Content-Type", "application/json")
             .body(json)
             .send()
-            .await.unwrap()
+            .await
+            .unwrap()
             .text()
-            .await.unwrap();
+            .await
+            .unwrap();
 
         response
     }
@@ -149,7 +178,7 @@ impl OAuth {
 
 #[derive(Debug)]
 pub struct WcifContainer {
-    pub(crate) wcif: Wcif
+    pub(crate) wcif: Wcif,
 }
 
 impl WcifContainer {
@@ -158,10 +187,7 @@ impl WcifContainer {
     }
 
     pub fn add_oauth(self, oauth: OAuth) -> WcifOAuth {
-        WcifOAuth {
-            cont: self,
-            oauth
-        }
+        WcifOAuth { cont: self, oauth }
     }
 
     pub fn get_mut<'a>(&'a mut self) -> &'a mut Wcif {
@@ -205,11 +231,11 @@ impl WcifContainer {
     }
 
     pub fn round_iter(&self) -> impl Iterator<Item = &Round> {
-        self.events_iter().flat_map(|e|e.rounds.iter())
+        self.events_iter().flat_map(|e| e.rounds.iter())
     }
 
     pub fn round_iter_mut(&mut self) -> impl Iterator<Item = &mut Round> {
-        self.events_iter_mut().flat_map(|e|e.rounds.iter_mut())
+        self.events_iter_mut().flat_map(|e| e.rounds.iter_mut())
     }
 
     pub fn patch_rounds(&mut self, func: impl FnMut(&mut Round)) {
@@ -217,97 +243,143 @@ impl WcifContainer {
     }
 
     pub fn activity_iter(&self) -> impl Iterator<Item = &Activity> {
-        self.wcif.schedule.venues.iter().flat_map(|venue|{
-            venue.rooms.iter().flat_map(|room|{
-                ActivityIter::new(&room.activities)
-            })
+        self.wcif.schedule.venues.iter().flat_map(|venue| {
+            venue
+                .rooms
+                .iter()
+                .flat_map(|room| ActivityIter::new(&room.activities))
         })
     }
 
     pub fn schedule_activity_iter(&self) -> impl Iterator<Item = &Activity> {
-        self.wcif.schedule.venues.iter().flat_map(|venue|{
-            venue.rooms.iter().flat_map(|room|{
-                room.activities.iter()
-            })
-        })
+        self.wcif
+            .schedule
+            .venues
+            .iter()
+            .flat_map(|venue| venue.rooms.iter().flat_map(|room| room.activities.iter()))
     }
 
     pub fn reg_ids_of_delegates(&self) -> Vec<usize> {
         self.persons_iter()
-            .filter(|person| person.roles.contains(&Role::Delegate) || person.roles.contains(&Role::TraineeDelegate))
+            .filter(|person| {
+                person.roles.contains(&Role::Delegate)
+                    || person.roles.contains(&Role::TraineeDelegate)
+            })
             .filter_map(|person| person.registrant_id)
             .collect()
     }
 
     pub fn overlapping_activities<'a>(&'a self) -> Vec<(&'a Activity, &'a Activity)> {
         self.schedule_activity_iter()
-            .map(|act_1|{
-                self.schedule_activity_iter().filter(|act_2|act_1.overlaps(act_2)).zip(std::iter::repeat(act_1))
+            .map(|act_1| {
+                self.schedule_activity_iter()
+                    .filter(|act_2| act_1.overlaps(act_2))
+                    .zip(std::iter::repeat(act_1))
             })
             .flatten()
             .collect()
     }
 
-    pub fn add_groups_to_event(&mut self, event: &str, round: usize, no: usize, subgroups: usize) -> std::result::Result<&mut Vec<Activity>, ()> {
-        let act = self.wcif.schedule.venues.iter_mut()
-            .flat_map(|v|&mut v.rooms)
-            .flat_map(|r|&mut r.activities)
-            .find(|a|a.activity_code.contains(&format!("{event}-r{round}")))
-            .map(|a|{
+    pub fn add_groups_to_event(
+        &mut self,
+        event: &str,
+        round: usize,
+        no: usize,
+        subgroups: usize,
+    ) -> std::result::Result<&mut Vec<Activity>, ()> {
+        let act = self
+            .wcif
+            .schedule
+            .venues
+            .iter_mut()
+            .flat_map(|v| &mut v.rooms)
+            .flat_map(|r| &mut r.activities)
+            .find(|a| a.activity_code.contains(&format!("{event}-r{round}")))
+            .map(|a| {
                 if a.child_activities.len() != 0 {
-                    let ids: Vec<_> = a.child_activities.iter()
-                        .map(|a| a.id)
-                        .collect();
+                    let ids: Vec<_> = a.child_activities.iter().map(|a| a.id).collect();
                     for person in self.wcif.persons.iter_mut() {
-                        person.assignments.retain(|act| !ids.contains(&act.activity_id));
+                        person
+                            .assignments
+                            .retain(|act| !ids.contains(&act.activity_id));
                     }
                 }
-                a.child_activities = (0..no * subgroups).map(|g|{
-                    let group_time = (a.end_time - a.start_time) / no as i32;
-                    let start_time = a.start_time + (group_time * (g / subgroups) as i32);
-                    let end_time = a.start_time + (group_time * ((g / subgroups) as i32 + 1));
-                    Activity { 
-                        id: a.id * 1000 + g, 
-                        name: format!("{}, Group {}", a.name, g + 1), 
-                        activity_code: format!("{}-g{}", a.activity_code, g + 1), 
-                        start_time, 
-                        end_time, 
-                        child_activities: vec![], 
-                        scramble_set_id: None, 
-                        extensions: vec![] }
+                a.child_activities = (0..no * subgroups)
+                    .map(|g| {
+                        let group_time = (a.end_time - a.start_time) / no as i32;
+                        let start_time = a.start_time + (group_time * (g / subgroups) as i32);
+                        let end_time = a.start_time + (group_time * ((g / subgroups) as i32 + 1));
+                        Activity {
+                            id: a.id * 1000 + g,
+                            name: format!("{}, Group {}", a.name, g + 1),
+                            activity_code: format!("{}-g{}", a.activity_code, g + 1),
+                            start_time,
+                            end_time,
+                            child_activities: vec![],
+                            scramble_set_id: None,
+                            extensions: vec![],
+                        }
                     })
                     .collect();
                 a
             });
         match act {
-            Some(v) => {
-                Ok(&mut v.child_activities)
-            }
-            _ => Err(())
+            Some(v) => Ok(&mut v.child_activities),
+            _ => Err(()),
         }
     }
 
-    /// Returns true if there exists groups for the round. Will panic if the event-round pair does exist.
-    pub fn detect_round_groups_exist(&self, event: &str, round: usize) -> bool{
-        let act = self.wcif.schedule.venues.iter()
-            .flat_map(|v|&v.rooms)
-            .flat_map(|r|&r.activities)
-            .find(|a|a.activity_code.contains(&format!("{event}-r{round}")))
-            .map(|a|{
-            !a.child_activities.is_empty()}
-        ).expect("check that your event and round number is correct");
+    /// Returns true if there exists groups for the round. Will panic if the event-round pair does not exist.
+    pub fn detect_round_groups_exist(&self, event: &str, round: usize) -> bool {
+        let act = self
+            .wcif
+            .schedule
+            .venues
+            .iter()
+            .flat_map(|v| &v.rooms)
+            .flat_map(|r| &r.activities)
+            .find(|a| a.activity_code.contains(&format!("{event}-r{round}")))
+            .map(|a| !a.child_activities.is_empty())
+            .expect("check that your event and round number is correct");
+        act
+    }
+
+    /// Returns the number of entered competitors and total number of competitors for a given
+    /// round. Will panic if the even-round pair does not exist.
+    pub fn count_entered(&self, event_id: &str, round_no: usize) -> (u64, u64) {
+        let act = self
+            .wcif
+            .events
+            .iter()
+            .find(|event| event.id == event_id)
+            .and_then(|event| {
+                event
+                    .rounds
+                    .iter()
+                    .find(|round| round.id == format!("{event_id}-r{round_no}"))
+            })
+            .map(|round| {
+                let entered = round
+                    .results
+                    .iter()
+                    .filter(|res| res.ranking.is_some())
+                    .count();
+                let competitors = round.results.len();
+                (entered as u64, competitors as u64)
+            })
+            .expect("check that your event and round number is correct");
         act
     }
 }
 
 struct ActivityIter<'a> {
-    activites: Vec<Box<dyn Iterator<Item = &'a Activity> + 'a>>
+    activites: Vec<Box<dyn Iterator<Item = &'a Activity> + 'a>>,
 }
 
 impl<'a> ActivityIter<'a> {
     fn new(vec: &'a Vec<Activity>) -> Self {
         ActivityIter {
-            activites: vec![Box::new(vec.iter())]
+            activites: vec![Box::new(vec.iter())],
         }
     }
 }
@@ -327,8 +399,7 @@ impl<'a> Iterator for ActivityIter<'a> {
                     Some(v)
                 }
             }
-        }
-        else {
+        } else {
             None
         }
     }
