@@ -24,7 +24,7 @@ pub fn draw_scorecard(generator: &mut ScorecardGenerator, scorecard: &MaybeScore
     generator.write(scorecard.name(map).unwrap_or(""), 16.0, 19.0, 10.0, Left, Normal);
 
     let attempts_amount = match scorecard.event() {
-        "666" | "777" | "333mbf" | "333bf" | "444bf" | "555bf" => 3,
+        "666" | "777" | "333mbf" | "444bf" | "555bf" => 3,
         _ => 5
     };
 
