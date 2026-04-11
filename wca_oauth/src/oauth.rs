@@ -111,7 +111,7 @@ impl OAuth {
 
     pub async fn get_wcif_api(self: &Self, id: &str) -> String {
         let get_url = format!(
-            "https://api.worldcubeassociation.org/competitions/{}/wcif",
+            "https://api.worldcubeassociation.org/competitions/{}/wcif/version/1.1",
             id
         );
         //Request wcif
@@ -153,7 +153,7 @@ impl OAuth {
 
     async fn patch_wcif(&self, wcif: &Wcif, id: &str) -> String {
         let patch_url = format!(
-            "https://api.worldcubeassociation.org/competitions/{}/wcif",
+            "https://api.worldcubeassociation.org/competitions/{}/wcif/version/1.1",
             id
         );
 
