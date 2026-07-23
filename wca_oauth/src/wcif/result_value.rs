@@ -4,15 +4,15 @@ use serde::Deserializer;
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum AttemptResult {
+pub enum ResultValue {
 	DNF,
 	DNS,
 	Skip,
 	Ok(usize),
 }
 
-impl<'de> Deserialize<'de> for AttemptResult {
-	fn deserialize<D>(deserializer: D) -> Result<AttemptResult, D::Error>
+impl<'de> Deserialize<'de> for ResultValue {
+	fn deserialize<D>(deserializer: D) -> Result<ResultValue, D::Error>
 	where
 		D: Deserializer<'de>,
 	{
@@ -23,7 +23,7 @@ impl<'de> Deserialize<'de> for AttemptResult {
 struct AttemptResultVisitor;
 
 impl<'de> Visitor<'de> for AttemptResultVisitor {
-	type Value = AttemptResult;
+	type Value = ResultValue;
 
 	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
 		formatter.write_str("an attemptresult")
@@ -34,10 +34,10 @@ impl<'de> Visitor<'de> for AttemptResultVisitor {
 		E: serde::de::Error,
 	{
 		Ok(match v {
-			-1 => AttemptResult::DNF,
-			-2 => AttemptResult::DNS,
-			0 => AttemptResult::Skip,
-			_ => AttemptResult::Ok(v as usize),
+			-1 => ResultValue::DNF,
+			-2 => ResultValue::DNS,
+			0 => ResultValue::Skip,
+			_ => ResultValue::Ok(v as usize),
 		})
 	}
 
@@ -46,26 +46,26 @@ impl<'de> Visitor<'de> for AttemptResultVisitor {
 		E: serde::de::Error,
 	{
 		Ok(match v {
-			0 => AttemptResult::Skip,
-			_ => AttemptResult::Ok(v as usize),
+			0 => ResultValue::Skip,
+			_ => ResultValue::Ok(v as usize),
 		})
 	}
 }
 
-impl Serialize for AttemptResult {
+impl Serialize for ResultValue {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: serde::Serializer,
 	{
 		match self {
-			AttemptResult::Ok(v) => return v.serialize(serializer),
+			ResultValue::Ok(v) => return v.serialize(serializer),
 			_ => (),
 		}
 		serializer.serialize_i64(match self {
-			AttemptResult::DNF => -1,
-			AttemptResult::DNS => -2,
-			AttemptResult::Skip => 0,
-			AttemptResult::Ok(v) => *v as i64,
+			ResultValue::DNF => -1,
+			ResultValue::DNS => -2,
+			ResultValue::Skip => 0,
+			ResultValue::Ok(v) => *v as i64,
 		})
 	}
 }

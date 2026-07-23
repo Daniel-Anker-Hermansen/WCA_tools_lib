@@ -7,6 +7,6 @@ pub struct Event {
 	pub id: String,
 	pub rounds: Vec<Round>,
 	pub competitor_limit: Option<usize>,
-	pub qualification: Option<serde_json::Value>,
+	pub qualification: Option<Qualification>,
 	pub extensions: Vec<serde_json::Value>,
 }

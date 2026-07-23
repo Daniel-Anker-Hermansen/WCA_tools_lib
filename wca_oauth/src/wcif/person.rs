@@ -18,4 +18,5 @@ pub struct Person {
 	pub registration: Option<Registration>,
 	pub assignments: Vec<Assignment>,
 	pub personal_bests: Vec<PersonalBest>,
+	pub extensions: Vec<serde_json::Value>,
 }

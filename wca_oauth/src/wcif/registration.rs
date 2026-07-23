@@ -8,4 +8,6 @@ pub struct Registration {
 	pub status: String,
 	pub guests: usize,
 	pub comments: String,
+	pub administrative_notes: String,
+	pub is_competing: bool,
 }

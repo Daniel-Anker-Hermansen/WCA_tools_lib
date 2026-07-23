@@ -63,7 +63,7 @@ impl OAuth {
 		params.insert("client_id", &self.client_id);
 		params.insert("client_secret", &self.client_secret);
 		params.insert("redirect_uri", &self.redirect_uri);
-		params.insert("code", &code.trim());
+		params.insert("code", code.trim());
 
 		//Request token
 		let response = self
@@ -89,7 +89,7 @@ impl OAuth {
 		params.insert("grant_type", "refresh_token");
 		params.insert("client_id", &self.client_id);
 		params.insert("client_secret", &self.client_secret);
-		params.insert("refresh_token", &self.refresh_token.trim());
+		params.insert("refresh_token", self.refresh_token.trim());
 
 		//Request token
 		let response = self
@@ -109,9 +109,9 @@ impl OAuth {
 		self.refresh_token = auth_response.refresh_token;
 	}
 
-	pub async fn get_wcif_api(self: &Self, id: &str) -> String {
+	pub async fn get_wcif_api(&self, id: &str) -> String {
 		let get_url = format!(
-			"https://api.worldcubeassociation.org/competitions/{}/wcif/version/1.1",
+			"https://api.worldcubeassociation.org/competitions/{}/wcif/version/2.1.1",
 			id
 		);
 		//Request wcif
