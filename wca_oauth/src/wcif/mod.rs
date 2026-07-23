@@ -67,4 +67,3 @@ pub fn parse(json: String) -> WcifResult {
 		.map(WcifContainer::new)
 		.map_err(|_| serde_json::from_str(&json).unwrap())
 }
-
