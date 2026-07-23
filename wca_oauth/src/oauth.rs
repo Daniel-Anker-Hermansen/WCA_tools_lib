@@ -345,7 +345,7 @@ impl WcifContainer {
     }
 
     /// Returns the number of entered competitors and total number of competitors for a given
-    /// round. Will panic if the even-round pair does not exist.
+    /// round. Will panic if the event-round pair does not exist.
     pub fn count_entered(&self, event_id: &str, round_no: usize) -> (u64, u64) {
         let act = self
             .wcif
