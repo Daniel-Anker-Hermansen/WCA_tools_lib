@@ -13,7 +13,7 @@ pub struct Round {
 	pub participation_ruleset: Option<ParticipationRuleset>,
 	pub results: Vec<Result>,
 	pub scramble_set_count: usize,
-	// pub scramble_sets: Vec<ScrambleSet>, // Scramble sets is not implemented by the wca
+	// pub scramble_sets: Vec<ScrambleSet>, // scramble_sets is not implemented by the wca
 	// currerntly.
 	pub extensions: Vec<serde_json::Value>,
 }

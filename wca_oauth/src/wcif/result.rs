@@ -15,12 +15,11 @@ pub struct Result {
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Attempt {
-	pub result: ResultValue, // This is supposed to be value according to the specification but
-				  // the wca page actually produces result.
+	pub value: ResultValue,
 	pub reconstruction: Option<serde_json::Value>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 pub enum ResultCondition {

@@ -9,7 +9,7 @@ pub struct ParticipationRuleset {
 	pub reserved_places: Option<ReservedPlaces>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 pub enum ParticipationSource {
