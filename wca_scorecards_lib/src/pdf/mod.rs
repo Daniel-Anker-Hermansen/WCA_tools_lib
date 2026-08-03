@@ -51,6 +51,7 @@ pub(crate) fn run(
 	//Unwrap cannot fail because the first element of lines always exists, although skip can lead
 	//to panic later when used.
 	let header = groups_csv.next().unwrap().split(",").skip(2);
+	let no_rounds = groups_csv.next().unwrap().split(",").skip(2).map(|x| x.parse::<usize>().expect("number of rounds must be a positive interger"));
 	let mut map = HashMap::new();
 	let mut k = groups_csv
 		//Filter off empty lines. Fixes annoying EOF issues.
@@ -58,7 +59,7 @@ pub(crate) fn run(
 		//Map each person to each event they compete in.
 		//Enumerate for panic messages
 		.enumerate()
-		.map(|(line, person)| {
+		.flat_map(|(line, person)| {
 			let mut iter = person.split(",");
 			let name = match iter.next() {
 				None => panic!("Line {} in csv missing name", line + 2),
@@ -79,7 +80,7 @@ pub(crate) fn run(
 			//Insert the competitor into the id to name map.
 			map.insert(id, name.to_string());
 			//Zipping with header (clone) to know the order of events.
-			iter.zip(header.clone()).filter_map(move |(asign, event)| {
+			iter.zip(header.clone()).zip(no_rounds.clone()).filter_map(move |((asign, event), no)| {
 				//Test whether competitor is assigned.
 				if asign == "" {
 					return None;
@@ -102,19 +103,18 @@ pub(crate) fn run(
 						),
 						Ok(v) => v,
 					});
-					Some((id, event, group, station))
+					Some((id, event, group, station, no))
 				}
 			})
 		})
-		.flatten()
-		.map(|(id, event, group, station)| Scorecard {
+		.flat_map(|(id, event, group, station, no)| (1..=no).map(move |r| Scorecard {
 			id: Some(id),
 			group,
-			round: 1,
+			round: r,
 			station,
 			event,
 			stage: station.map(|x| (x as u32 - 1) / stages.capacity),
-		})
+		}))
 		.collect::<Vec<_>>();
 	//Sort scorecards by event, round, group, station (Definition order)
 	compare.sort_slice(&mut k);
