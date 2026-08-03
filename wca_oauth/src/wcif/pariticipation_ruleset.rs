@@ -14,10 +14,12 @@ pub struct ParticipationRuleset {
 #[serde(tag = "type")]
 pub enum ParticipationSource {
 	Registrations,
+	#[serde(rename_all = "camelCase")]
 	Round {
 		round_id: String,
 		result_condition: ResultCondition,
 	},
+	#[serde(rename_all = "camelCase")]
 	LinkedRounds {
 		round_ids: Vec<String>,
 		result_condition: ResultCondition,
