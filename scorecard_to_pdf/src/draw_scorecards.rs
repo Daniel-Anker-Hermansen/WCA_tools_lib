@@ -106,6 +106,7 @@ fn get_event_func<'a>(language: &'a Language) -> impl Fn(&str) -> &'a str {
         "555bf" => &language.e555bf,
         "skewb" => &language.eskewb,
         "sq1" => &language.esq1,
+	"fto" => "Face Turning Octahedron", // We are prepared for the future! (Just in case)
         _ => "Please fix your csv"
     }
 }

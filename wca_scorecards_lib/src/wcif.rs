@@ -6,13 +6,12 @@ use scorecard_to_pdf::TimeLimit;
 
 pub fn get_rounds(wcif: &mut WcifContainer) -> Vec<(String, usize)> {
 	wcif.events_iter()
-		.map(|event| event.rounds.iter().map(|round| round.id.to_string()))
-		.flatten()
+		.flat_map(|event| event.rounds.iter().map(|round| round.id.to_string()))
 		.map(|str| {
 			let mut iter = str.split("-r");
 			(
 				iter.next().unwrap().to_string(),
-				usize::from_str_radix(iter.next().unwrap(), 10).unwrap(),
+				iter.next().unwrap().parse().unwrap(),
 			)
 		})
 		.collect()
@@ -75,11 +74,10 @@ pub fn wca_live_get_competitors_for_round(
 
 	// Now actually get those who proceeded
 	let round_json = get_round_json(wcif, event, round).expect("Round should exist");
-	let mut advancement_ids = wca_live_get_advancement_ids(&round_json);
+	let mut advancement_ids = wca_live_get_advancement_ids(round_json);
 	if !advancement_ids.is_empty() {
 		if !advancement_ids_prev.is_empty() {
-			advancement_ids
-				.sort_by_key(|&x| advancement_ids_prev.get(&x).unwrap_or(&std::usize::MAX));
+			advancement_ids.sort_by_key(|&x| advancement_ids_prev.get(&x).unwrap_or(&usize::MAX));
 			(advancement_ids, id_map)
 		} else {
 			(advancement_ids, id_map)
@@ -95,22 +93,10 @@ pub fn get_competitors_for_round(
 	round: usize,
 ) -> (Vec<usize>, HashMap<usize, String>) {
 	let id_map = get_id_map(wcif);
-	let round_json = get_round_json(wcif, event, round - 1);
-	let advancement_ids = match round_json {
-		Some(v) => get_advancement_ids(v, &v.participation_ruleset),
-		None => wcif
-			.persons_iter()
-			.filter_map(|p| {
-				let reg = p.registration.as_ref()?;
-				if reg.status == format!("accepted") && reg.event_ids.contains(&event.to_string()) {
-					Some(p.registrant_id.unwrap())
-				} else {
-					None
-				}
-			})
-			.collect(),
-	};
-	(advancement_ids, id_map)
+	(
+		get_participation(wcif.get(), event, round as u64).expect("The round exists"),
+		id_map,
+	)
 }
 
 pub(crate) fn get_round_json<'a>(
@@ -120,50 +106,6 @@ pub(crate) fn get_round_json<'a>(
 ) -> Option<&'a mut Round> {
 	let activity_id = format!("{}-r{}", event, round);
 	wcif.round_iter_mut().find(|round| round.id == activity_id)
-}
-
-fn get_advancement_amount(
-	round: &Round,
-	advancement_condition: &Option<AdvancementCondition>,
-) -> Option<usize> {
-	let number_of_competitors = round.results.len();
-	match advancement_condition {
-		None => None,
-		Some(v) => Some(match v {
-			AdvancementCondition::Percent(level) => number_of_competitors * level / 100,
-			AdvancementCondition::Ranking(level) => (number_of_competitors * 75 / 100).min(*level),
-			AdvancementCondition::AttemptResult(level) => {
-				let mut intermediate = round.results.iter().collect::<Vec<_>>();
-				intermediate.sort_by_key(|r| r.ranking);
-				let x = intermediate
-					.into_iter()
-					.enumerate()
-					.find(|(_, result)| match result.average {
-						ResultValue::DNF | ResultValue::DNS | ResultValue::Skip => true,
-						ResultValue::Ok(average) => average as usize > *level,
-					})
-					.map(|(x, _)| x);
-				let percent =
-					get_advancement_amount(round, &Some(AdvancementCondition::Percent(75)))
-						.unwrap();
-				match x {
-					Some(v) if v < percent => v,
-					_ => percent,
-				}
-			}
-		}),
-	}
-}
-
-pub fn get_max_advancement(count: usize, advancement_condition: Option<ResultCondition>) -> usize {
-	match advancement_condition {
-		None => count * 75 / 100,
-		Some(v) => match v {
-			ResultCondition::ResultAchieved { .. } => count * 75 / 100,
-			ResultCondition::Ranking { value, .. } => (value as usize).min(count * 75 / 100),
-			ResultCondition::Percent { value, .. } => value as usize * count / 100,
-		},
-	}
 }
 
 pub fn get_id_map(wcif: &WcifContainer) -> HashMap<usize, String> {
@@ -177,29 +119,107 @@ fn wca_live_get_advancement_ids(round: &Round) -> Vec<usize> {
 	advacenment_ids
 }
 
-fn get_advancement_ids(
-	round: &Round,
-	advancement_condition: &Option<ParticipationRuleset>,
-) -> Vec<usize> {
-	let advancement_amount = get_advancement_amount(round, advancement_condition);
-	match advancement_amount {
-		None => return vec![],
-		Some(advancement_amount) => {
-			let mut intermediate = round.results.iter().collect::<Vec<_>>();
-			intermediate.sort_by_key(|r| r.ranking);
-			let filtered = intermediate
-				.into_iter()
-				.filter(|result| result.ranking.unwrap() <= advancement_amount)
-				.collect::<Vec<_>>();
-			if filtered.len() > advancement_amount {
-				let not_included = filtered.last().unwrap().ranking.unwrap();
-				return filtered
-					.iter()
-					.filter(|result| result.ranking.unwrap() != not_included)
-					.map(|result| result.person_id)
-					.collect();
+fn get_advancement(
+	event: &Event,
+	round_ids: &[String],
+	result_condition: &ResultCondition,
+) -> Option<Vec<usize>> {
+	let mut best_results = HashMap::new();
+	let single = match result_condition {
+		ResultCondition::ResultAchieved { scope, .. } => scope == "single",
+		ResultCondition::Ranking { scope, .. } => scope == "single",
+		ResultCondition::Percent { scope, .. } => scope == "single",
+	};
+	for round_id in round_ids {
+		let round = event.rounds.iter().find(|round| &round.id == round_id)?;
+		for result in &round.results {
+			if (!single && matches!(result.average, ResultValue::Ok(_)))
+				|| (single && matches!(result.best, ResultValue::Ok(_)))
+			{
+				let act_average = if single {
+					ResultValue::Skip
+				} else {
+					result.average
+				};
+				let entry = best_results
+					.entry(result.person_id)
+					.or_insert((act_average, result.best));
+				*entry = (*entry).min((act_average, result.best));
 			}
-			filtered.iter().map(|result| result.person_id).collect()
 		}
+	}
+	let mut ids: Vec<_> = best_results.into_iter().collect();
+	ids.sort();
+	let max_advancement = (ids.len() * 75) / 100;
+	let num_advanced = match result_condition {
+		ResultCondition::ResultAchieved { value, .. } => {
+			if single {
+				ids.iter()
+					.filter(|(_, (_, single))| match value {
+						Some(value) => single < value,
+						None => true,
+					})
+					.count()
+			} else {
+				ids.iter()
+					.filter(|(_, (average, _))| match value {
+						Some(value) => average < value,
+						None => true,
+					})
+					.count()
+			}
+		}
+		ResultCondition::Ranking { value, .. } => *value as usize,
+		ResultCondition::Percent { value, .. } => (ids.len() * *value as usize) / 100,
+	}
+	.min(max_advancement);
+	let cut = ids[num_advanced].1;
+	Some(
+		ids.into_iter()
+			.filter(|(_, value)| *value < cut)
+			.map(|(id, _)| id)
+			.collect(),
+	)
+}
+
+pub(crate) fn get_registered_competitors(wcif: &Wcif, event_id: &str) -> Vec<usize> {
+	wcif.persons
+		.iter()
+		.filter(|person| {
+			person
+				.registration
+				.as_ref()
+				.map(|registration| {
+					registration.is_competing
+						&& registration.status == "accepted"
+						&& registration.event_ids.iter().any(|event| event == event_id)
+				})
+				.unwrap_or(false)
+		})
+		.filter_map(|person| person.registrant_id)
+		.collect()
+}
+
+/// Gets all ids that may compete in the round in seeding order. The participation source's
+/// advancement condition should be used to determine the actual advancement.
+fn get_participation(wcif: &Wcif, event_id: &str, round: u64) -> Option<Vec<usize>> {
+	let event = wcif.events.iter().find(|event| event.id == event_id)?;
+	let round = event.rounds.get((round - 1) as usize)?;
+	let participation_source = round
+		.participation_ruleset
+		.as_ref()?
+		.pariticipation_source
+		.as_ref()?;
+
+	match participation_source {
+		ParticipationSource::Registration => Some(get_registered_competitors(wcif, event_id)),
+		ParticipationSource::Round {
+			round_id,
+			result_condition,
+		} => get_advancement(event, core::slice::from_ref(round_id), result_condition),
+		ParticipationSource::LinkedRounds {
+			round_ids,
+			result_condition,
+		} => get_advancement(event, round_ids, result_condition),
 	}
 }

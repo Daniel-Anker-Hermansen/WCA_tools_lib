@@ -4,7 +4,7 @@ use scorecard_to_pdf::Return;
 use scorecard_to_pdf::{scorecards_to_pdf, Language, Scorecard, TimeLimit};
 use std::fs::File;
 use std::{collections::HashMap, io::Write};
-use wca_oauth::{Wcif, WcifContainer};
+use wca_oauth::{ResultCondition, Wcif, WcifContainer};
 
 #[derive(Clone)]
 pub struct Stages {
@@ -232,59 +232,70 @@ where
 	}
 }
 
+fn advancement_count(
+	map: &HashMap<&str, usize>,
+	round_id: &str,
+	result_condition: &ResultCondition,
+) -> usize {
+	let base = map[round_id];
+	let max_allowed = (base * 75) / 100;
+	match result_condition {
+		ResultCondition::ResultAchieved { .. } => base,
+		ResultCondition::Ranking { value, .. } => *value as usize,
+		ResultCondition::Percent { value, .. } => (base * *value as usize) / 100,
+	}
+	.min(max_allowed)
+}
+
 pub(crate) fn blank_for_subsequent(wcif: &Wcif, stations: usize) -> Return {
 	let name = &wcif.name;
 	let mut scorecards = Vec::new();
+	let mut map = HashMap::new();
 	for event in &wcif.events {
-		let event_name = &event.id;
-		let mut prev_round_competitors = wcif
-			.persons
-			.iter()
-			.filter(|p| {
-				p.registration
-					.as_ref()
-					.map(|r| r.event_ids.contains(event_name) && r.status == "accepted")
-					.unwrap_or(false)
-			})
-			.count();
-		for (i, r) in event.rounds.windows(2).enumerate() {
-			let advancement_cond = r[1]
+		for (round, i) in event.rounds.iter().zip(1..) {
+			let participation_source = round
 				.participation_ruleset
 				.as_ref()
-				.map(|x| x.pariticipation_source.clone())
-				.flatten()
-				.map(|x| match x {
-					wca_oauth::ParticipationSource::Registration => {
-						wca_oauth::ResultCondition::Percent {
-							scope: "average".to_string(),
-							value: 75,
-						}
+				.unwrap()
+				.pariticipation_source
+				.as_ref()
+				.unwrap();
+			let count = match participation_source {
+				wca_oauth::ParticipationSource::Registration => {
+					crate::wcif::get_registered_competitors(wcif, &event.id).len()
+				}
+				wca_oauth::ParticipationSource::Round {
+					round_id,
+					result_condition,
+				} => advancement_count(&map, round_id, result_condition),
+				wca_oauth::ParticipationSource::LinkedRounds {
+					round_ids,
+					result_condition,
+				} => advancement_count(&map, &round_ids[0], result_condition),
+			};
+			if !matches!(
+				participation_source,
+				wca_oauth::ParticipationSource::Registration
+			) {
+				let event_name = &event.id;
+				map.insert(&round.id, count);
+				let groups = count.div_ceil(stations);
+				let count_per_group = count / groups;
+				let leftover = count % groups;
+				for group in 1..=groups {
+					let c = count_per_group + (leftover >= group) as usize;
+					for j in 1..=c {
+						scorecards.push(Scorecard {
+							event: event_name,
+							round: i,
+							group,
+							station: Some(j),
+							id: None,
+							stage: None,
+						});
 					}
-					wca_oauth::ParticipationSource::Round {
-						result_condition, ..
-					} => result_condition,
-					wca_oauth::ParticipationSource::LinkedRounds {
-						result_condition, ..
-					} => result_condition,
-				});
-			let count = crate::wcif::get_max_advancement(prev_round_competitors, advancement_cond);
-			let groups = count.div_ceil(stations);
-			let count_per_group = count / groups;
-			let leftover = count % groups;
-			for group in 1..=groups {
-				let c = count_per_group + (leftover >= group) as usize;
-				for j in 1..=c {
-					scorecards.push(Scorecard {
-						event: event_name,
-						round: i + 2,
-						group,
-						station: Some(j),
-						id: None,
-						stage: None,
-					});
 				}
 			}
-			prev_round_competitors = count;
 		}
 	}
 

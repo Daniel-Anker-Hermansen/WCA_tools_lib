@@ -3,12 +3,36 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResultValue {
+	Ok(usize),
 	DNF,
 	DNS,
 	Skip,
-	Ok(usize),
+}
+
+impl PartialOrd for ResultValue {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl Ord for ResultValue {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		let sprio = match self {
+			ResultValue::Ok(v) => (0, *v),
+			ResultValue::DNF => (1, 0),
+			ResultValue::DNS => (1, 1),
+			ResultValue::Skip => (1, 2),
+		};
+		let oprio = match other {
+			ResultValue::Ok(v) => (0, *v),
+			ResultValue::DNF => (1, 0),
+			ResultValue::DNS => (1, 1),
+			ResultValue::Skip => (1, 2),
+		};
+		sprio.cmp(&oprio)
+	}
 }
 
 impl<'de> Deserialize<'de> for ResultValue {
