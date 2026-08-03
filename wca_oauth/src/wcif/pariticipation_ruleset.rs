@@ -13,7 +13,7 @@ pub struct ParticipationRuleset {
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 pub enum ParticipationSource {
-	Registration,
+	Registrations,
 	Round {
 		round_id: String,
 		result_condition: ResultCondition,

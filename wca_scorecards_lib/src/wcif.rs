@@ -210,6 +210,7 @@ fn get_participation(wcif: &Wcif, event_id: &str, round: u64) -> Option<Vec<usiz
 		.as_ref()?
 		.pariticipation_source
 		.as_ref()?;
+	dbg!("here");
 
 	match participation_source {
 		ParticipationSource::Registration => Some(get_registered_competitors(wcif, event_id)),
