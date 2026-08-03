@@ -213,7 +213,7 @@ fn get_participation(wcif: &Wcif, event_id: &str, round: u64) -> Option<Vec<usiz
 	dbg!("here");
 
 	match participation_source {
-		ParticipationSource::Registration => Some(get_registered_competitors(wcif, event_id)),
+		ParticipationSource::Registrations => Some(get_registered_competitors(wcif, event_id)),
 		ParticipationSource::Round {
 			round_id,
 			result_condition,

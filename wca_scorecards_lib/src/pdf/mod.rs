@@ -261,7 +261,7 @@ pub(crate) fn blank_for_subsequent(wcif: &Wcif, stations: usize) -> Return {
 				.as_ref()
 				.unwrap();
 			let count = match participation_source {
-				wca_oauth::ParticipationSource::Registration => {
+				wca_oauth::ParticipationSource::Registrations => {
 					crate::wcif::get_registered_competitors(wcif, &event.id).len()
 				}
 				wca_oauth::ParticipationSource::Round {
@@ -275,7 +275,7 @@ pub(crate) fn blank_for_subsequent(wcif: &Wcif, stations: usize) -> Return {
 			};
 			if !matches!(
 				participation_source,
-				wca_oauth::ParticipationSource::Registration
+				wca_oauth::ParticipationSource::Registrations
 			) {
 				let event_name = &event.id;
 				map.insert(&round.id, count);
