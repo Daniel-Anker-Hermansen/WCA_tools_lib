@@ -257,7 +257,7 @@ pub(crate) fn blank_for_subsequent(wcif: &Wcif, stations: usize) -> Return {
 				.participation_ruleset
 				.as_ref()
 				.unwrap()
-				.pariticipation_source
+				.participation_source
 				.as_ref()
 				.unwrap();
 			let count = match participation_source {

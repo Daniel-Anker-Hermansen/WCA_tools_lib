@@ -5,7 +5,7 @@ use super::*;
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticipationRuleset {
-	pub pariticipation_source: Option<ParticipationSource>,
+	pub participation_source: Option<ParticipationSource>,
 	pub reserved_places: Option<ReservedPlaces>,
 }
 
