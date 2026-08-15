@@ -6,7 +6,7 @@ use super::*;
 pub struct Event {
 	pub id: String,
 	pub rounds: Vec<Round>,
-	pub competitor_limit: Option<usize>,
+	// pub competitor_limit: Option<usize>, // Not implemented by WCA
 	pub qualification: Option<Qualification>,
 	pub extensions: Vec<serde_json::Value>,
 }
