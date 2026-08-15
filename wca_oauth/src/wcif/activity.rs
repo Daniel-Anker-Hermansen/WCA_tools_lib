@@ -18,7 +18,7 @@ pub struct Activity {
 	)]
 	pub end_time: DateTime,
 	pub child_activities: Vec<Activity>,
-	pub scramble_set_id: Option<usize>,
+	// pub scramble_set_id: Option<usize>, // Not implemented
 	pub extensions: Vec<serde_json::Value>,
 }
 
