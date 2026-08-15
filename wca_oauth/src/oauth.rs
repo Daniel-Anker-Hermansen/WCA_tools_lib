@@ -316,7 +316,7 @@ impl WcifContainer {
 							start_time,
 							end_time,
 							child_activities: vec![],
-							scramble_set_id: None,
+							// scramble_set_id: None,
 							extensions: vec![],
 						}
 					})
