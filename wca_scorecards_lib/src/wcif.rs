@@ -133,24 +133,22 @@ fn get_advancement(
 	for round_id in round_ids {
 		let round = event.rounds.iter().find(|round| &round.id == round_id)?;
 		for result in &round.results {
-			if (!single && matches!(result.average, ResultValue::Ok(_)))
-				|| (single && matches!(result.best, ResultValue::Ok(_)))
-			{
-				let act_average = if single {
-					ResultValue::Skip
-				} else {
-					result.average
-				};
-				let entry = best_results
-					.entry(result.person_id)
-					.or_insert((act_average, result.best));
-				*entry = (*entry).min((act_average, result.best));
-			}
+			let act_average = if single {
+				ResultValue::Skip
+			} else {
+				result.average
+			};
+			let entry = best_results
+				.entry(result.person_id)
+				.or_insert((act_average, result.best));
+			*entry = (*entry).min((act_average, result.best));
 		}
 	}
 	let mut ids: Vec<_> = best_results.into_iter().collect();
-	ids.sort();
+	ids.sort_by_key(|(_, res)| *res);
+	dbg!(&ids);
 	let max_advancement = (ids.len() * 75) / 100;
+	dbg!(max_advancement);
 	let num_advanced = match result_condition {
 		ResultCondition::ResultAchieved { value, .. } => {
 			if single {
@@ -173,10 +171,12 @@ fn get_advancement(
 		ResultCondition::Percent { value, .. } => (ids.len() * *value as usize) / 100,
 	}
 	.min(max_advancement);
+	dbg!(num_advanced);
 	let cut = ids[num_advanced].1;
+	dbg!(cut);
 	Some(
 		ids.into_iter()
-			.filter(|(_, value)| *value < cut)
+			.filter(|(_, value)| *value < cut && *value != (ResultValue::DNF, ResultValue::DNF))
 			.map(|(id, _)| id)
 			.collect(),
 	)
